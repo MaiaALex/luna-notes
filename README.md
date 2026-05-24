@@ -1,2 +1,3 @@
-# luna-notes
-Feminine cycle planner for Obsidian
+## Author
+
+Created by MaiaALex.

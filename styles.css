@@ -1,0 +1,206 @@
+/* Luna Notes Premium UI */
+
+.luna-dashboard,
+.luna-page,
+.luna-calendar {
+  --luna-radius: 22px;
+  --luna-card-bg: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.025));
+  --luna-border: 1px solid var(--background-modifier-border);
+  --luna-shadow: 0 12px 30px rgba(0,0,0,0.18);
+}
+
+/* Общие заголовки */
+
+.luna-dashboard h1,
+.luna-page h1,
+.luna-calendar h1 {
+  font-size: 2.1em;
+  margin-bottom: 28px;
+  letter-spacing: -0.02em;
+}
+
+.luna-dashboard h2,
+.luna-page h2,
+.luna-calendar h2 {
+  margin-top: 34px;
+  margin-bottom: 16px;
+  padding: 14px 18px;
+  border-radius: var(--luna-radius);
+  background: var(--luna-card-bg);
+  border: var(--luna-border);
+  box-shadow: var(--luna-shadow);
+}
+
+/* Таблицы как карточки */
+
+.luna-dashboard table,
+.luna-page table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  border-radius: var(--luna-radius);
+  background: var(--luna-card-bg);
+  border: var(--luna-border);
+  box-shadow: var(--luna-shadow);
+  margin: 16px 0 24px;
+}
+
+.luna-dashboard th,
+.luna-page th {
+  padding: 14px 16px;
+  font-weight: 800;
+  color: var(--text-normal);
+  background: rgba(255,255,255,0.06);
+}
+
+.luna-dashboard td,
+.luna-page td {
+  padding: 14px 16px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.luna-dashboard strong,
+.luna-page strong {
+  color: var(--text-accent);
+}
+
+/* Списки */
+
+.luna-dashboard ul,
+.luna-page ul {
+  padding: 18px 22px;
+  border-radius: var(--luna-radius);
+  background: var(--luna-card-bg);
+  border: var(--luna-border);
+  box-shadow: var(--luna-shadow);
+}
+
+.luna-dashboard li,
+.luna-page li {
+  margin: 8px 0;
+}
+
+/* Luna Support */
+
+.luna-dashboard h2 + p,
+.luna-page h2 + p {
+  padding: 18px 20px;
+  border-radius: var(--luna-radius);
+  background: linear-gradient(135deg, rgba(132,94,247,0.18), rgba(255,90,179,0.12));
+  border: var(--luna-border);
+  box-shadow: var(--luna-shadow);
+  font-size: 1.05em;
+}
+
+/* Luna Cycle Calendar */
+
+.luna-calendar-card {
+  padding: 22px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.025));
+  border: 1px solid var(--background-modifier-border);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.18);
+  margin-bottom: 28px;
+}
+
+.luna-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 16px;
+  align-items: center;
+  text-align: center;
+}
+
+.luna-calendar-weekdays {
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.luna-cal-day {
+  display: inline-flex;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: white;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.luna-cal-day:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+}
+
+.luna-period {
+  background: #ff3f5f;
+}
+
+.luna-follicular {
+  background: #68d85f;
+}
+
+.luna-ovulation {
+  background: #f4c542;
+}
+
+.luna-luteal {
+  background: #8664ff;
+}
+
+.luna-pms {
+  background: #ff5ab3;
+}
+
+.luna-today {
+  outline: 3px solid white;
+  outline-offset: 5px;
+  box-shadow: 0 0 0 6px rgba(255,255,255,0.16);
+}
+
+.luna-legend-card {
+  padding: 18px;
+  border-radius: 20px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  box-shadow: var(--luna-shadow);
+}
+
+.luna-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.luna-legend-row:last-child {
+  border-bottom: none;
+}
+
+.luna-legend-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  flex: 0 0 18px;
+}
+
+.luna-legend-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.luna-legend-text strong {
+  font-size: 1em;
+}
+
+.luna-legend-text span {
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
