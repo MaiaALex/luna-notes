@@ -1,9 +1,9 @@
 {
   "id": "luna-notes",
   "name": "Luna Notes",
-  "version": "1.0.1"
+  "version": "1.0.2",
   "minAppVersion": "1.5.0",
-  "description": "Feminine cycle planner for Obsidian",
+  "description": "Feminine cycle planner with phase calendar, dashboard, analytics, affirmations, and bilingual support.",
   "author": "MaiaALex",
   "isDesktopOnly": false
 }
