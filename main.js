@@ -1,4 +1,4 @@
-const { Plugin, Notice, PluginSettingTab, Setting } = require("obsidian");
+const { Plugin, Notice, PluginSettingTab, Setting, Modal } = require("obsidian");
 
 const DEFAULT_SETTINGS = {
   cycleLength: 30,
@@ -13,190 +13,74 @@ module.exports = class LunaNotesPlugin extends Plugin {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
     this.addSettingTab(new LunaNotesSettingTab(this.app, this));
 
+    this.registerDomEvent(document, "click", async (event) => await this.handleTrackerDocumentClick(event));
+
     this.addRibbonIcon("heart", this.t("startPeriod"), async () => await this.startPeriod());
 
     this.addCommand({ id: "start-period", name: this.t("startPeriod"), callback: async () => await this.startPeriod() });
+    this.addCommand({ id: "add-past-cycle", name: this.t("addPastCycle"), callback: async () => await this.addPastCycle() });
     this.addCommand({ id: "finish-period", name: this.t("finishPeriod"), callback: async () => await this.finishPeriod() });
     this.addCommand({ id: "show-current-phase", name: this.t("showCurrentPhase"), callback: async () => await this.showCurrentPhase() });
-    this.addCommand({ id: "create-luna-dashboard", name: this.t("createDashboard"), callback: async () => await this.createLunaDashboard() });
-    this.addCommand({ id: "create-life-planner", name: this.t("createLifePlanner"), callback: async () => await this.createLifePlanner() });
-    this.addCommand({ id: "create-cycle-calendar", name: this.t("createCycleCalendar"), callback: async () => await this.createCycleCalendar() });
-    this.addCommand({ id: "create-cycle-analytics", name: this.t("createCycleAnalytics"), callback: async () => await this.createCycleAnalytics() });
-    this.addCommand({ id: "create-pattern-tracker", name: this.t("createPatternTracker"), callback: async () => await this.createPatternTracker() });
-    this.addCommand({ id: "create-phase-intelligence", name: this.t("createPhaseIntelligence"), callback: async () => await this.createPhaseIntelligence() });
+    this.addCommand({ id: "create-luna-dashboard", name: this.t("createDashboard"), callback: async () => await this.createDashboard() });
+    this.addCommand({ id: "create-cycle-calendar", name: this.t("createCalendar"), callback: async () => await this.createCalendar() });
+
   }
 
   t(key) {
     const ru = {
       startPeriod: "Начались месячные",
+      addPastCycle: "Добавить прошлый цикл",
       finishPeriod: "Закончились месячные",
       showCurrentPhase: "Показать сегодняшнюю фазу",
       createDashboard: "Создать Luna Dashboard",
-      createLifePlanner: "Создать Luna Life Planner",
-      createCycleCalendar: "Создать Luna Cycle Calendar",
-      createCycleAnalytics: "Создать аналитику циклов",
-      createPatternTracker: "Создать AI Pattern Tracker",
-      createPhaseIntelligence: "Создать Phase Intelligence",
-
-      dashboardTitle: "Luna Dashboard",
-      lifePlannerTitle: "Luna Life Planner",
-      calendarTitle: "Luna Cycle Calendar",
-      analyticsTitle: "Cycle Analytics",
-      patternTitle: "AI Pattern Tracker",
-      phaseTitle: "Phase Intelligence",
-
-      today: "Сегодня",
-      block: "Блок",
-      value: "Значение",
-      cycleDay: "День цикла",
-      phase: "Фаза",
-      moon: "Луна",
-      mode: "Режим",
-      energy: "Энергия",
-      focus: "Фокус дня",
-      quickAccess: "Быстрый переход",
-      wellbeing: "Самочувствие",
-      indicator: "Показатель",
-      support: "Luna Support",
-      observation: "Наблюдение дня",
-
-      sleep: "Сон",
-      pain: "Боль",
-      mood: "Настроение",
-      stress: "Стресс",
-      appetite: "Аппетит",
-      workout: "Тренировка",
-      thoughts: "Мысли дня",
-
-      periodPhase: "Менструальная",
-      follicularPhase: "Фолликулярная",
-      ovulationPhase: "Овуляция",
-      lutealPhase: "Лютеиновая",
-      pmsPhase: "ПМС",
-
-      restMode: "Rest mode",
-      createMode: "Create mode",
-      socialMode: "Social mode",
-      protectionMode: "Protection mode",
-      structureMode: "Structure mode",
-
-      lowEnergy: "Low / восстановление",
-      highEnergy: "High / рост энергии",
-      peakEnergy: "Peak / пик энергии",
-      pmsEnergy: "Low-Medium / чувствительность",
-      mediumEnergy: "Medium / стабильная",
-
-      focusSelfCare: "Забота о себе",
-      focusIdeas: "Новые идеи",
-      focusVisible: "Проявленность",
-      focusLoad: "Снижение нагрузки",
-      focusStructure: "Структура",
-
-      affirmationPeriod: "Сегодня можно двигаться мягче. Не нужно перегружать себя — маленькие шаги тоже движение.",
-      affirmationFollicular: "Я открыта росту, новым возможностям и мягкому движению вперёд.",
-      affirmationOvulation: "Я могу проявляться уверенно, свободно и спокойно занимать своё место.",
-      affirmationPms: "Мои чувства важны. Я могу поддержать себя и не требовать от себя слишком много.",
-      affirmationLuteal: "Я выбираю мягкость, границы и заботу о себе.",
-
+      createCalendar: "Создать Luna Cycle Calendar",
+      saved: "Сохранено",
+      cycleSaved: "Цикл сохранён",
+      pastCycleSaved: "Прошлый цикл сохранён",
+      finishedNotice: "Месячные завершены",
+      invalidDate: "Проверь даты",
+      alreadyExists: "Такая запись уже есть",
+      noCycle: "Нет записи цикла",
+      trackerSaved: "Трекер сохранён",
       newCycleTitle: "Начало месячных",
       startDate: "Дата начала",
+      endDate: "Дата окончания",
       status: "Статус",
       active: "Активен",
+      finished: "Завершены",
+      cycleDay: "День цикла",
+      phase: "Фаза",
       lunarPhase: "Лунная фаза",
+      actualDates: "Фактические даты",
+      periodDuration: "Длительность месячных",
+      actualOvulation: "Овуляция фактически",
       forecast: "Прогноз",
       ovulationAround: "Овуляция примерно",
       pmsAround: "ПМС примерно с",
       nextPeriodAround: "Следующие месячные примерно",
       symptomTracker: "Симптом-трекер",
       finishCycleTitle: "Завершение цикла",
-      endDate: "Дата окончания",
-      periodDuration: "Длительность месячных",
-      finished: "Завершены",
-
-      phases: "Фазы",
-      period: "Месячные",
-      follicular: "Фолликулярная",
-      ovulation: "Овуляция",
-      luteal: "Лютеиновая",
-      pms: "ПМС",
-      periodDesc: "Период восстановления",
-      follicularDesc: "Рост энергии и новые идеи",
-      ovulationDesc: "Окно проявленности и контакта",
-      lutealDesc: "Структура, завершение и бережность",
-      pmsDesc: "Снижение нагрузки и забота",
-
-      saved: "Цикл сохранён",
-      finishedNotice: "Месячные завершены",
-      noData: "Нет данных",
-      noCycle: "Нет записей цикла",
-      alreadyExists: "Запись за сегодня уже есть",
-      alreadyFinished: "Этот цикл уже завершён",
-      startNotFound: "Не найдена дата начала",
-
-      updatedDashboard: "Luna Dashboard обновлён",
-      updatedPlanner: "Luna Life Planner обновлён",
-      updatedCalendar: "Календарь обновлён",
-      updatedAnalytics: "Аналитика обновлена",
-      updatedTracker: "AI Pattern Tracker обновлён",
-      updatedPhase: "Phase Intelligence обновлён",
-
-      createdDashboard: "Luna Dashboard создан",
-      createdPlanner: "Luna Life Planner создан",
-      createdCalendar: "Календарь создан",
-      createdAnalytics: "Аналитика создана",
-      createdTracker: "AI Pattern Tracker создан",
-      createdPhase: "Phase Intelligence создан",
-
-      myDay: "Мой день",
-      morning: "Утро",
-      day: "День",
-      evening: "Вечер",
-      morningItems: ["вода", "лёгкий завтрак", "проверить состояние тела", "без спешки"],
-      dayItems: ["главная задача дня", "1–2 важных дела", "пауза / отдых", "прогулка"],
-      eveningItems: ["замедление", "уход за собой", "растяжка / душ", "разгрузить мысли"],
-      myThoughts: "Мои мысли",
-      victory: "Маленькая победа дня",
-      gratitude: "Благодарность",
-
-      generalStats: "Общая статистика",
-      parameter: "Параметр",
-      totalCycles: "Всего циклов",
-      avgCycle: "Средняя длина цикла",
-      avgPeriod: "Длительность месячных",
-      regularity: "Регулярность",
-      lastCycle: "Последний цикл",
-      notEnough: "Пока мало данных",
-      cycleHistory: "История циклов",
-      cycle: "Цикл",
-      start: "Начало",
-      end: "Конец",
-      current: "Текущий",
-      completed: "Завершён",
-      willShow: "Что покажет со временем",
-      analyticsItems: ["Среднюю длину цикла", "Регулярность", "Изменения фаз", "Повторяющиеся симптомы", "Периоды ПМС", "Общие закономерности"],
-      conclusion: "Вывод",
-      analyticsConclusion: "Чем больше циклов будет записано, тем точнее станет аналитика.",
-
-      latestData: "Последние данные",
-      track: "Что отслеживаю",
-      trackItems: ["ПМС", "Энергия", "Настроение", "Сон", "Аппетит", "Мысли", "Стресс", "Контент / продуктивность"],
-      trackerConclusion: "Пока собираю данные. Со временем появятся закономерности.",
-
-      currentPhase: "Текущая фаза",
-      pageShows: "Что показывает страница",
-      phaseItems: ["Энергия по фазам", "Сон", "Настроение", "Стресс", "Аппетит", "Мысли", "Нагрузка"],
-      phaseConclusion: "Когда накопится больше циклов, здесь появятся повторяющиеся паттерны.",
-
-      q1: "Что я чувствую сегодня?",
-      q2: "Где телу нужен отдых?",
-      q3: "Какие мысли повторяются?",
-      q4: "Что мне сейчас важно?",
-
-      monday: "Пн", tuesday: "Вт", wednesday: "Ср", thursday: "Чт", friday: "Пт", saturday: "Сб", sunday: "Вс",
-
+      sleep: "Сон",
+      pain: "Боль",
+      energy: "Энергия",
+      mood: "Настроение",
+      stress: "Стресс",
+      appetite: "Аппетит",
+      workout: "Тренировка",
+      thoughts: "Мысли дня",
+      periodPhase: "Менструальная",
+      follicularPhase: "Фолликулярная",
+      ovulationPhase: "Овуляция",
+      lutealPhase: "Лютеиновая",
+      pmsPhase: "ПМС",
+      dashboardTitle: "Luna Dashboard",
+      calendarTitle: "Luna Cycle Calendar",
+      today: "Сегодня",
+      supportPms: "Больше заботы и отдыха. Не требуй от себя многого.",
+      supportPeriod: "Тело просит мягкости. Можно замедлиться.",
+      supportDefault: "Отмечай состояние коротко, без лишней писанины.",
       settingsTitle: "Luna Notes — настройки",
       languageSetting: "Язык",
-      languageDesc: "Выбери язык страниц Luna Notes",
       cycleLengthSetting: "Длина цикла",
       periodLengthSetting: "Длительность месячных",
       ovulationDaySetting: "День овуляции",
@@ -205,187 +89,79 @@ module.exports = class LunaNotesPlugin extends Plugin {
 
     const en = {
       startPeriod: "Start period",
+      addPastCycle: "Add past cycle",
       finishPeriod: "Finish period",
       showCurrentPhase: "Show current phase",
       createDashboard: "Create Luna Dashboard",
-      createLifePlanner: "Create Luna Life Planner",
-      createCycleCalendar: "Create Luna Cycle Calendar",
-      createCycleAnalytics: "Create cycle analytics",
-      createPatternTracker: "Create AI Pattern Tracker",
-      createPhaseIntelligence: "Create Phase Intelligence",
-
-      dashboardTitle: "Luna Dashboard",
-      lifePlannerTitle: "Luna Life Planner",
-      calendarTitle: "Luna Cycle Calendar",
-      analyticsTitle: "Cycle Analytics",
-      patternTitle: "AI Pattern Tracker",
-      phaseTitle: "Phase Intelligence",
-
-      today: "Today",
-      block: "Block",
-      value: "Value",
-      cycleDay: "Cycle day",
-      phase: "Phase",
-      moon: "Moon",
-      mode: "Mode",
-      energy: "Energy",
-      focus: "Focus of the day",
-      quickAccess: "Quick access",
-      wellbeing: "Wellbeing",
-      indicator: "Indicator",
-      support: "Luna Support",
-      observation: "Daily reflection",
-
-      sleep: "Sleep",
-      pain: "Pain",
-      mood: "Mood",
-      stress: "Stress",
-      appetite: "Appetite",
-      workout: "Workout",
-      thoughts: "Daily thoughts",
-
-      periodPhase: "Menstrual",
-      follicularPhase: "Follicular",
-      ovulationPhase: "Ovulation",
-      lutealPhase: "Luteal",
-      pmsPhase: "PMS",
-
-      restMode: "Rest mode",
-      createMode: "Create mode",
-      socialMode: "Social mode",
-      protectionMode: "Protection mode",
-      structureMode: "Structure mode",
-
-      lowEnergy: "Low / recovery",
-      highEnergy: "High / energy rising",
-      peakEnergy: "Peak energy",
-      pmsEnergy: "Low-Medium / sensitive",
-      mediumEnergy: "Medium / stable",
-
-      focusSelfCare: "Self-care",
-      focusIdeas: "New ideas",
-      focusVisible: "Visibility",
-      focusLoad: "Lower pressure",
-      focusStructure: "Structure",
-
-      affirmationPeriod: "Today, I can move softer. I do not need to push myself — small steps still count.",
-      affirmationFollicular: "I am open to growth, new opportunities and gentle movement forward.",
-      affirmationOvulation: "I can show up confidently, freely and take up space calmly.",
-      affirmationPms: "My feelings matter. I can support myself and ask less from myself today.",
-      affirmationLuteal: "I choose softness, boundaries and care for myself.",
-
+      createCalendar: "Create Luna Cycle Calendar",
+      saved: "Saved",
+      cycleSaved: "Cycle saved",
+      pastCycleSaved: "Past cycle saved",
+      finishedNotice: "Period finished",
+      invalidDate: "Check dates",
+      alreadyExists: "This record already exists",
+      noCycle: "No cycle record",
+      trackerSaved: "Tracker saved",
       newCycleTitle: "Period started",
       startDate: "Start date",
+      endDate: "End date",
       status: "Status",
       active: "Active",
+      finished: "Finished",
+      cycleDay: "Cycle day",
+      phase: "Phase",
       lunarPhase: "Moon phase",
+      actualDates: "Actual dates",
+      periodDuration: "Period length",
+      actualOvulation: "Actual ovulation",
       forecast: "Forecast",
       ovulationAround: "Ovulation around",
       pmsAround: "PMS around",
       nextPeriodAround: "Next period around",
       symptomTracker: "Symptom tracker",
       finishCycleTitle: "Cycle finish",
-      endDate: "End date",
-      periodDuration: "Period duration",
-      finished: "Finished",
-
-      phases: "Phases",
-      period: "Period",
-      follicular: "Follicular",
-      ovulation: "Ovulation",
-      luteal: "Luteal",
-      pms: "PMS",
-      periodDesc: "Recovery period",
-      follicularDesc: "Energy growth and new ideas",
-      ovulationDesc: "Visibility and connection window",
-      lutealDesc: "Structure, completion and softness",
-      pmsDesc: "Lower pressure and care",
-
-      saved: "Cycle saved",
-      finishedNotice: "Period finished",
-      noData: "No data",
-      noCycle: "No cycle records",
-      alreadyExists: "Today’s record already exists",
-      alreadyFinished: "This cycle is already finished",
-      startNotFound: "Start date not found",
-
-      updatedDashboard: "Luna Dashboard updated",
-      updatedPlanner: "Luna Life Planner updated",
-      updatedCalendar: "Calendar updated",
-      updatedAnalytics: "Analytics updated",
-      updatedTracker: "AI Pattern Tracker updated",
-      updatedPhase: "Phase Intelligence updated",
-
-      createdDashboard: "Luna Dashboard created",
-      createdPlanner: "Luna Life Planner created",
-      createdCalendar: "Calendar created",
-      createdAnalytics: "Analytics created",
-      createdTracker: "AI Pattern Tracker created",
-      createdPhase: "Phase Intelligence created",
-
-      myDay: "My day",
-      morning: "Morning",
-      day: "Day",
-      evening: "Evening",
-      morningItems: ["water", "light breakfast", "check in with my body", "no rush"],
-      dayItems: ["main task of the day", "1–2 important things", "pause / rest", "walk"],
-      eveningItems: ["slow down", "self-care", "stretch / shower", "clear my thoughts"],
-      myThoughts: "My thoughts",
-      victory: "Small win of the day",
-      gratitude: "Gratitude",
-
-      generalStats: "General stats",
-      parameter: "Parameter",
-      totalCycles: "Total cycles",
-      avgCycle: "Average cycle length",
-      avgPeriod: "Period duration",
-      regularity: "Regularity",
-      lastCycle: "Last cycle",
-      notEnough: "Not enough data yet",
-      cycleHistory: "Cycle history",
-      cycle: "Cycle",
-      start: "Start",
-      end: "End",
-      current: "Current",
-      completed: "Completed",
-      willShow: "What this will show over time",
-      analyticsItems: ["Average cycle length", "Regularity", "Phase changes", "Repeating symptoms", "PMS periods", "General patterns"],
-      conclusion: "Conclusion",
-      analyticsConclusion: "The more cycles you record, the more accurate analytics will become.",
-
-      latestData: "Latest data",
-      track: "What I track",
-      trackItems: ["PMS", "Energy", "Mood", "Sleep", "Appetite", "Thoughts", "Stress", "Content / productivity"],
-      trackerConclusion: "Collecting data for now. Patterns will appear over time.",
-
-      currentPhase: "Current phase",
-      pageShows: "What this page shows",
-      phaseItems: ["Energy by phase", "Sleep", "Mood", "Stress", "Appetite", "Thoughts", "Load"],
-      phaseConclusion: "When more cycles are recorded, repeating phase patterns will appear.",
-
-      q1: "What am I feeling today?",
-      q2: "Where does my body need rest?",
-      q3: "Which thoughts keep repeating?",
-      q4: "What matters to me right now?",
-
-      monday: "Mon", tuesday: "Tue", wednesday: "Wed", thursday: "Thu", friday: "Fri", saturday: "Sat", sunday: "Sun",
-
-      settingsTitle: "Luna Notes — settings",
+      sleep: "Sleep",
+      pain: "Pain",
+      energy: "Energy",
+      mood: "Mood",
+      stress: "Stress",
+      appetite: "Appetite",
+      workout: "Workout",
+      thoughts: "Daily thoughts",
+      periodPhase: "Menstrual",
+      follicularPhase: "Follicular",
+      ovulationPhase: "Ovulation",
+      lutealPhase: "Luteal",
+      pmsPhase: "PMS",
+      dashboardTitle: "Luna Dashboard",
+      calendarTitle: "Luna Cycle Calendar",
+      today: "Today",
+      supportPms: "More care and rest. Do not demand too much from yourself.",
+      supportPeriod: "Your body asks for softness. You can slow down.",
+      supportDefault: "Track gently, without over-writing.",
+      settingsTitle: "Luna Notes settings",
       languageSetting: "Language",
-      languageDesc: "Choose Luna Notes page language",
       cycleLengthSetting: "Cycle length",
       periodLengthSetting: "Period length",
       ovulationDaySetting: "Ovulation day",
       pmsLengthSetting: "PMS length"
     };
 
-    const lang = this.settings.language === "en" ? "en" : "ru";
-    const dict = lang === "en" ? en : ru;
-    return dict[key] || ru[key] || key;
+    return (this.settings.language === "en" ? en : ru)[key] || key;
+  }
+
+  async saveSettings() {
+    await this.saveData(this.settings);
   }
 
   async ensureFolders() {
-    const folders = ["Luna Notes", "Luna Notes/Cycles", "Luna Notes/Dashboard", "Luna Notes/Planning", "Luna Notes/Calendar", "Luna Notes/Analytics"];
+    const folders = [
+      "Luna Notes",
+      "Luna Notes/Cycles",
+      "Luna Notes/Dashboard",
+      "Luna Notes/Calendar"
+    ];
+
     for (const folder of folders) {
       if (!this.app.vault.getAbstractFileByPath(folder)) {
         await this.app.vault.createFolder(folder);
@@ -394,74 +170,109 @@ module.exports = class LunaNotesPlugin extends Plugin {
   }
 
   formatDate(date) {
-    return date.toLocaleDateString(this.settings.language === "en" ? "en-US" : "ru-RU");
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}.${month}.${year}`;
   }
 
-  parseDateFlexible(text) {
-    const value = text.trim();
+  toFileDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
 
-    if (value.includes(".")) {
-      const [day, month, year] = value.split(".");
-      return new Date(Number(year), Number(month) - 1, Number(day));
-    }
+  parseDate(value) {
+    if (!value) return null;
+    const trimmed = String(value).trim();
+    const iso = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
 
-    const parsed = new Date(value);
-    if (!isNaN(parsed.getTime())) return parsed;
+    const ru = trimmed.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+    if (ru) return new Date(Number(ru[3]), Number(ru[2]) - 1, Number(ru[1]));
 
-    return null;
+    const parsed = new Date(trimmed);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  daysBetween(startDate, endDate) {
+    return Math.floor((endDate - startDate) / 86400000) + 1;
+  }
+
+  formatDays(count) {
+    if (this.settings.language === "en") return `${count} ${count === 1 ? "day" : "days"}`;
+    const mod10 = count % 10;
+    const mod100 = count % 100;
+    const word = mod10 === 1 && mod100 !== 11
+      ? "день"
+      : mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)
+        ? "дня"
+        : "дней";
+    return `${count} ${word}`;
   }
 
   findField(content, labels) {
     for (const label of labels) {
-      const regex = new RegExp(`^${label}:[ \\t]*([^\\n\\r]*)`, "m");
-      const match = content.match(regex);
-      if (match && match[1]) return match[1].trim();
+      const match = content.match(new RegExp(`^${label}:\\s*(.+)$`, "m"));
+      if (match) return match[1].trim();
     }
     return "";
   }
 
-  getFieldValue(content, key) {
-    const aliases = {
-      sleep: ["Сон", "Sleep"],
-      pain: ["Боль", "Pain"],
-      energy: ["Энергия", "Energy"],
-      mood: ["Настроение", "Mood"],
-      stress: ["Стресс", "Stress"],
-      appetite: ["Аппетит", "Appetite"],
-      workout: ["Тренировка", "Workout"],
-      thoughts: ["Мысли дня", "Daily thoughts"]
-    };
-
-    return this.findField(content, aliases[key] || [key]);
-  }
-
   getStartDateFromContent(content) {
-    const value = this.findField(content, ["Дата начала", "Start date"]);
-    if (!value) return null;
-    return this.parseDateFlexible(value);
+    return this.parseDate(this.findField(content, ["Дата начала", "Start date"]));
   }
 
   getEndDateFromContent(content) {
-    const value = this.findField(content, ["Дата окончания", "End date"]);
-    if (!value) return null;
-    return this.parseDateFlexible(value);
+    return this.parseDate(this.findField(content, ["Дата окончания", "End date"]));
+  }
+
+  getActualOvulationFromContent(content) {
+    return this.findField(content, ["Овуляция фактически", "Actual ovulation"]);
   }
 
   getLatestCycleFile() {
     const folder = this.app.vault.getAbstractFileByPath("Luna Notes/Cycles");
-    if (!folder || !folder.children.length) return null;
-
+    if (!folder || !folder.children?.length) return null;
     return folder.children
       .filter(file => file.path.endsWith(".md"))
       .sort((a, b) => b.path.localeCompare(a.path))[0] || null;
   }
 
-  getPhase(day) {
-    const ovulationWindow = 5;
-    const ovulationStart = this.settings.ovulationDay - Math.floor(ovulationWindow / 2);
-    const ovulationEnd = this.settings.ovulationDay + Math.floor(ovulationWindow / 2);
-    const pmsStart = this.settings.cycleLength - this.settings.pmsLength + 1;
+  getTargetCycleFile() {
+    const activeFile = this.app.workspace.getActiveFile();
+    if (activeFile && activeFile.path.startsWith("Luna Notes/Cycles/") && activeFile.path.endsWith(".md")) {
+      return activeFile;
+    }
+    return this.getLatestCycleFile();
+  }
 
+  async getCycleHistory() {
+    const folder = this.app.vault.getAbstractFileByPath("Luna Notes/Cycles");
+    if (!folder || !folder.children?.length) return [];
+    const cycles = [];
+
+    for (const file of folder.children.filter(file => file.path.endsWith(".md"))) {
+      const content = await this.app.vault.read(file);
+      const startDate = this.getStartDateFromContent(content);
+      if (!startDate) continue;
+      cycles.push({
+        file,
+        content,
+        startDate,
+        endDate: this.getEndDateFromContent(content),
+        ovulation: this.getActualOvulationFromContent(content)
+      });
+    }
+
+    return cycles.sort((a, b) => a.startDate - b.startDate);
+  }
+
+  getPhase(day) {
+    const ovulationStart = this.settings.ovulationDay - 3;
+    const ovulationEnd = this.settings.ovulationDay + 3;
+    const pmsStart = this.settings.cycleLength - this.settings.pmsLength + 1;
     if (day <= this.settings.periodLength) return "period";
     if (day >= ovulationStart && day <= ovulationEnd) return "ovulation";
     if (day >= pmsStart) return "pms";
@@ -477,592 +288,398 @@ module.exports = class LunaNotesPlugin extends Plugin {
     return this.t("lutealPhase");
   }
 
-  getMoonPhase(date) {
+  getMoonPhaseData(date) {
     const knownNewMoon = new Date(2000, 0, 6);
     const lunarCycle = 29.53058867;
-    const daysSince = (date - knownNewMoon) / (1000 * 60 * 60 * 24);
+    const daysSince = (date - knownNewMoon) / 86400000;
     const moonAge = ((daysSince % lunarCycle) + lunarCycle) % lunarCycle;
 
     if (this.settings.language === "en") {
-      if (moonAge < 1.85) return "New Moon";
-      if (moonAge < 5.54) return "Waxing Crescent";
-      if (moonAge < 9.23) return "First Quarter";
-      if (moonAge < 12.92) return "Waxing Gibbous";
-      if (moonAge < 16.61) return "Full Moon";
-      if (moonAge < 20.30) return "Waning Gibbous";
-      if (moonAge < 23.99) return "Last Quarter";
-      if (moonAge < 27.68) return "Waning Crescent";
-      return "New Moon";
+      if (moonAge < 1.85) return { icon: "🌑", name: "New Moon" };
+      if (moonAge < 5.54) return { icon: "🌒", name: "Waxing Crescent" };
+      if (moonAge < 9.23) return { icon: "🌓", name: "First Quarter" };
+      if (moonAge < 12.92) return { icon: "🌔", name: "Waxing Gibbous" };
+      if (moonAge < 16.61) return { icon: "🌕", name: "Full Moon" };
+      if (moonAge < 20.30) return { icon: "🌖", name: "Waning Gibbous" };
+      if (moonAge < 23.99) return { icon: "🌗", name: "Last Quarter" };
+      if (moonAge < 27.68) return { icon: "🌘", name: "Waning Crescent" };
+      return { icon: "🌑", name: "New Moon" };
     }
 
-    if (moonAge < 1.85) return "Новолуние";
-    if (moonAge < 5.54) return "Растущая Луна";
-    if (moonAge < 9.23) return "Первая четверть";
-    if (moonAge < 12.92) return "Прибывающая Луна";
-    if (moonAge < 16.61) return "Полнолуние";
-    if (moonAge < 20.30) return "Убывающая Луна";
-    if (moonAge < 23.99) return "Последняя четверть";
-    if (moonAge < 27.68) return "Старая Луна";
-    return "Новолуние";
+    if (moonAge < 1.85) return { icon: "🌑", name: "Новолуние" };
+    if (moonAge < 5.54) return { icon: "🌒", name: "Растущая Луна" };
+    if (moonAge < 9.23) return { icon: "🌓", name: "Первая четверть" };
+    if (moonAge < 12.92) return { icon: "🌔", name: "Прибывающая Луна" };
+    if (moonAge < 16.61) return { icon: "🌕", name: "Полнолуние" };
+    if (moonAge < 20.30) return { icon: "🌖", name: "Убывающая Луна" };
+    if (moonAge < 23.99) return { icon: "🌗", name: "Последняя четверть" };
+    if (moonAge < 27.68) return { icon: "🌘", name: "Старая Луна" };
+    return { icon: "🌑", name: "Новолуние" };
   }
 
-  getRecommendations(phase) {
-    if (phase === "period") return { mode: this.t("restMode"), energy: this.t("lowEnergy"), focus: this.t("focusSelfCare"), affirmation: this.t("affirmationPeriod") };
-    if (phase === "follicular") return { mode: this.t("createMode"), energy: this.t("highEnergy"), focus: this.t("focusIdeas"), affirmation: this.t("affirmationFollicular") };
-    if (phase === "ovulation") return { mode: this.t("socialMode"), energy: this.t("peakEnergy"), focus: this.t("focusVisible"), affirmation: this.t("affirmationOvulation") };
-    if (phase === "pms") return { mode: this.t("protectionMode"), energy: this.t("pmsEnergy"), focus: this.t("focusLoad"), affirmation: this.t("affirmationPms") };
-    return { mode: this.t("structureMode"), energy: this.t("mediumEnergy"), focus: this.t("focusStructure"), affirmation: this.t("affirmationLuteal") };
+  getTrackerFields() {
+    return [
+      { key: "sleep", label: this.t("sleep") },
+      { key: "pain", label: this.t("pain") },
+      { key: "energy", label: this.t("energy") },
+      { key: "mood", label: this.t("mood") },
+      { key: "stress", label: this.t("stress") },
+      { key: "appetite", label: this.t("appetite") },
+      { key: "workout", label: this.t("workout") }
+    ];
+  }
+
+  formatTrackerValue(value) {
+    const rating = Number(String(value || "").match(/[1-5]/)?.[0] || 0);
+    if (!rating) return "○ ○ ○ ○ ○";
+    const dots = Array.from({ length: 5 }, (_, index) => index < rating ? "●" : "○").join(" ");
+    return `${dots} ${rating}/5`;
+  }
+
+  readTrackerValue(value) {
+    const rating = Number(String(value || "").match(/[1-5]/)?.[0] || 0);
+    return rating ? `${rating}/5` : "";
+  }
+
+  buildSymptomTrackerContent(values = {}) {
+    const rows = this.getTrackerFields().map(field => {
+      const selected = Number(String(values[field.key] || "").match(/[1-5]/)?.[0] || 0);
+      const dots = Array.from({ length: 5 }, (_, index) => {
+        const value = index + 1;
+        const activeClass = selected >= value ? " is-selected" : "";
+        return `<button type="button" class="luna-note-dot${activeClass}" data-luna-field="${field.key}" data-luna-value="${value}" aria-label="${field.label}: ${value}/5"><span>${value}</span></button>`;
+      }).join("");
+      return `<div class="luna-note-tracker-row" data-luna-row="${field.key}"><strong>${field.label}</strong><div class="luna-note-scale">${dots}</div></div>`;
+    }).join("\n");
+    const thoughts = this.escapeHtml(values.thoughts || "");
+    return `<div class="luna-note-tracker" data-luna-tracker="true">
+  <div class="luna-note-tracker-head">
+    <strong>Отметь мышью</strong>
+    <span>Сохранится в этот цикл</span>
+  </div>
+  <div class="luna-note-tracker-grid">
+${rows}
+  </div>
+  <label class="luna-note-thoughts">
+    <strong>${this.t("thoughts")}</strong>
+    <textarea data-luna-thoughts placeholder="чувствую...">${thoughts}</textarea>
+  </label>
+  <button type="button" class="luna-note-save" data-luna-save-thoughts="true">Сохранить мысли</button>
+</div>`;
+  }
+
+  parseSymptomTracker(content) {
+    const values = {};
+    for (const field of this.getTrackerFields()) {
+      const htmlMatch = content.match(new RegExp(`data-luna-field="${field.key}" data-luna-value="([1-5])"[^>]*class="[^"]*is-selected`, "m"))
+        || content.match(new RegExp(`class="[^"]*is-selected[^"]*"[^>]*data-luna-field="${field.key}"[^>]*data-luna-value="([1-5])"`, "m"));
+      const textMatch = content.match(new RegExp(`^${field.label}:[ \\t]*(.+)$`, "m"));
+      const value = htmlMatch ? `${htmlMatch[1]}/5` : textMatch ? textMatch[1].trim() : "";
+      values[field.key] = this.readTrackerValue(value);
+    }
+    const htmlThoughts = content.match(/<textarea[^>]*data-luna-thoughts[^>]*>([\s\S]*?)<\/textarea>/m);
+    const textThoughts = content.match(new RegExp(`^${this.t("thoughts")}:[ \\t]*(.*)$`, "m"));
+    values.thoughts = htmlThoughts ? this.unescapeHtml(htmlThoughts[1].trim()) : textThoughts ? textThoughts[1].trim() : "";
+    return values;
+  }
+
+  replaceSymptomTracker(content, values) {
+    const tracker = this.buildSymptomTrackerContent(values);
+    const header = `## ${this.t("symptomTracker")}`;
+    const finishHeader = `\n## ${this.t("finishCycleTitle")}`;
+    const startIndex = content.indexOf(header);
+    if (startIndex === -1) return `${content.trim()}\n\n${header}\n\n${tracker}\n`;
+    const trackerStart = startIndex + header.length;
+    const finishIndex = content.indexOf(finishHeader, trackerStart);
+    if (finishIndex === -1) return `${content.slice(0, trackerStart).trimEnd()}\n\n${tracker}\n`;
+    return `${content.slice(0, trackerStart).trimEnd()}\n\n${tracker}\n${content.slice(finishIndex)}`;
+  }
+
+  async saveSymptomTracker(file, values) {
+    const content = await this.app.vault.read(file);
+    await this.app.vault.modify(file, this.replaceSymptomTracker(content, values));
+  }
+
+  async handleTrackerDocumentClick(event) {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+
+    const dot = target.closest(".luna-note-dot");
+    const saveThoughts = target.closest("[data-luna-save-thoughts]");
+    if (!dot && !saveThoughts) return;
+
+    const tracker = target.closest(".luna-note-tracker");
+    const file = this.app.workspace.getActiveFile();
+    if (!tracker || !file || !file.path.startsWith("Luna Notes/")) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const content = await this.app.vault.read(file);
+    const values = this.parseSymptomTracker(content);
+
+    if (dot) {
+      const field = dot.getAttribute("data-luna-field");
+      const value = dot.getAttribute("data-luna-value");
+      if (!field || !value) return;
+      values[field] = values[field] === `${value}/5` ? "" : `${value}/5`;
+    }
+
+    const thoughts = tracker.querySelector("[data-luna-thoughts]");
+    if (thoughts instanceof HTMLTextAreaElement) values.thoughts = thoughts.value.trim();
+
+    await this.saveSymptomTracker(file, values);
+    new Notice(this.t("trackerSaved"));
+  }
+
+  escapeHtml(value) {
+    return String(value || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;");
+  }
+
+  unescapeHtml(value) {
+    return String(value || "")
+      .replaceAll("&quot;", '"')
+      .replaceAll("&gt;", ">")
+      .replaceAll("&lt;", "<")
+      .replaceAll("&amp;", "&");
+  }
+
+  getSupportText(phase) {
+    if (phase === "period") return this.t("supportPeriod");
+    if (phase === "pms") return this.t("supportPms");
+    return this.t("supportDefault");
+  }
+
+  buildPhaseStrip(periodLength, ovulationStart, ovulationEnd, cycleLength) {
+    let strip = "";
+    for (let day = 1; day <= 35; day++) {
+      let phase = "waiting";
+      if (day <= cycleLength) {
+        if (day <= periodLength) phase = "period";
+        else if (day >= ovulationStart && day <= ovulationEnd) phase = "ovulation";
+        else if (day >= cycleLength - this.settings.pmsLength + 1) phase = "pms";
+        else if (day < ovulationStart) phase = "follicular";
+        else phase = "luteal";
+      }
+      strip += `<span class="luna-strip-day luna-${phase}"></span>`;
+    }
+    return `<div class="luna-cycle-strip">${strip}</div>`;
+  }
+
+  buildCycleLogContent(startDate, endDate = null, actualOvulation = "") {
+    const periodLength = endDate ? this.daysBetween(startDate, endDate) : this.settings.periodLength;
+    const nextPeriod = new Date(startDate);
+    nextPeriod.setDate(startDate.getDate() + this.settings.cycleLength);
+    const ovulationStart = new Date(startDate);
+    ovulationStart.setDate(startDate.getDate() + this.settings.ovulationDay - 3);
+    const ovulationEnd = new Date(startDate);
+    ovulationEnd.setDate(startDate.getDate() + this.settings.ovulationDay + 3);
+    const pmsStart = new Date(startDate);
+    pmsStart.setDate(startDate.getDate() + this.settings.cycleLength - this.settings.pmsLength);
+    const moon = this.getMoonPhaseData(startDate);
+
+    return `---
+cssclasses:
+  - luna-page
+---
+
+# ${this.t("newCycleTitle")}
+
+<div class="luna-hero-card">
+  <div>
+    <p class="luna-kicker">${this.t("phase")}</p>
+    <h2>${this.getPhaseName("period")}</h2>
+    <p>${this.t("lunarPhase")}: ${moon.icon}</p>
+  </div>
+  <div class="luna-hero-orbit">
+    <span>1</span>
+    <small>${this.t("cycleDay")}</small>
+  </div>
+</div>
+
+%%
+${this.t("startDate")}: ${this.formatDate(startDate)}
+${this.t("status")}: ${endDate ? this.t("finished") : this.t("active")}
+${this.t("cycleDay")}: 1
+${this.t("phase")}: ${this.getPhaseName("period")}
+${this.t("lunarPhase")}: ${moon.name}
+${endDate ? `${this.t("endDate")}: ${this.formatDate(endDate)}` : ""}
+${actualOvulation ? `${this.t("actualOvulation")}: ${actualOvulation}` : ""}
+%%
+
+${this.buildPhaseStrip(periodLength, this.settings.ovulationDay - 3, this.settings.ovulationDay + 3, this.settings.cycleLength)}
+
+<div class="luna-metric-grid">
+  <div class="luna-metric-card"><strong>${this.formatDate(startDate)}</strong><span>${this.t("startDate")}</span></div>
+  <div class="luna-metric-card"><strong>${endDate ? this.formatDate(endDate) : "—"}</strong><span>${this.t("endDate")}</span></div>
+  <div class="luna-metric-card"><strong>${moon.icon}</strong><span>${this.t("lunarPhase")}</span></div>
+</div>
+
+## ${this.t("actualDates")}
+
+<div class="luna-metric-grid">
+  <div class="luna-metric-card"><strong>${endDate ? this.formatDate(endDate) : "—"}</strong><span>${this.t("endDate")}</span></div>
+  <div class="luna-metric-card"><strong>${this.formatDays(periodLength)}</strong><span>${this.t("periodDuration")}</span></div>
+  <div class="luna-metric-card"><strong>${actualOvulation || "—"}</strong><span>${this.t("actualOvulation")}</span></div>
+</div>
+
+## ${this.t("forecast")}
+
+<div class="luna-metric-grid">
+  <div class="luna-metric-card"><strong>${this.formatDate(ovulationStart)} - ${this.formatDate(ovulationEnd)}</strong><span>${this.t("ovulationAround")}</span></div>
+  <div class="luna-metric-card"><strong>${this.formatDate(pmsStart)}</strong><span>${this.t("pmsAround")}</span></div>
+  <div class="luna-metric-card"><strong>${this.formatDate(nextPeriod)}</strong><span>${this.t("nextPeriodAround")}</span></div>
+</div>
+
+## ${this.t("symptomTracker")}
+
+${this.buildSymptomTrackerContent()}
+
+${endDate ? `## ${this.t("finishCycleTitle")}
+
+<div class="luna-metric-grid">
+  <div class="luna-metric-card"><strong>${this.formatDate(endDate)}</strong><span>${this.t("endDate")}</span></div>
+  <div class="luna-metric-card"><strong>${this.formatDays(periodLength)}</strong><span>${this.t("periodDuration")}</span></div>
+  <div class="luna-metric-card"><strong>${this.t("finished")}</strong><span>${this.t("status")}</span></div>
+</div>
+` : ""}`;
   }
 
   async startPeriod() {
     await this.ensureFolders();
-
     const today = new Date();
-    const date = today.toISOString().split("T")[0];
-    const path = `Luna Notes/Cycles/Cycle Log ${date}.md`;
-
+    const path = `Luna Notes/Cycles/Cycle Log ${this.toFileDate(today)}.md`;
     if (this.app.vault.getAbstractFileByPath(path)) {
       new Notice(this.t("alreadyExists"));
       return;
     }
+    await this.app.vault.create(path, this.buildCycleLogContent(today));
+    new Notice(this.t("cycleSaved"));
+  }
 
-    const nextPeriod = new Date(today);
-    nextPeriod.setDate(today.getDate() + this.settings.cycleLength);
+  async addPastCycle() {
+    await this.ensureFolders();
+    new AddPastCycleModal(this.app, this).open();
+  }
 
-    const ovulationDate = new Date(today);
-    ovulationDate.setDate(today.getDate() + this.settings.ovulationDay - 1);
-
-    const pmsDate = new Date(today);
-    pmsDate.setDate(today.getDate() + this.settings.cycleLength - this.settings.pmsLength);
-
-    const content =
-`# ${this.t("newCycleTitle")}
-
-${this.t("startDate")}: ${this.formatDate(today)}
-${this.t("status")}: ${this.t("active")}
-${this.t("cycleDay")}: 1
-${this.t("phase")}: ${this.getPhaseName("period")}
-${this.t("lunarPhase")}: ${this.getMoonPhase(today)}
-
-## ${this.t("forecast")}
-${this.t("ovulationAround")}: ${this.formatDate(ovulationDate)}
-${this.t("pmsAround")}: ${this.formatDate(pmsDate)}
-${this.t("nextPeriodAround")}: ${this.formatDate(nextPeriod)}
-
-## ${this.t("symptomTracker")}
-
-${this.t("sleep")}:
-${this.t("pain")}:
-${this.t("energy")}:
-${this.t("mood")}:
-${this.t("stress")}:
-${this.t("appetite")}:
-${this.t("workout")}:
-${this.t("thoughts")}:
-`;
-
-    await this.app.vault.create(path, content);
-    new Notice(this.t("saved"));
+  async savePastCycle(startValue, endValue) {
+    const startDate = this.parseDate(startValue);
+    const endDate = this.parseDate(endValue);
+    if (!startDate || !endDate || endDate < startDate) {
+      new Notice(this.t("invalidDate"));
+      return;
+    }
+    const path = `Luna Notes/Cycles/Cycle Log ${this.toFileDate(startDate)}.md`;
+    if (this.app.vault.getAbstractFileByPath(path)) {
+      new Notice(this.t("alreadyExists"));
+      return;
+    }
+    await this.app.vault.create(path, this.buildCycleLogContent(startDate, endDate));
+    new Notice(this.t("pastCycleSaved"));
   }
 
   async finishPeriod() {
-    const latestFile = this.getLatestCycleFile();
-
-    if (!latestFile) {
+    const file = this.getTargetCycleFile();
+    if (!file) {
       new Notice(this.t("noCycle"));
       return;
     }
-
-    let content = await this.app.vault.read(latestFile);
-
-    if (content.includes(this.t("finished")) || content.includes("Завершены") || content.includes("Finished")) {
-      new Notice(this.t("alreadyFinished"));
+    const content = await this.app.vault.read(file);
+    if (this.getEndDateFromContent(content)) {
+      new Notice(this.t("finishedNotice"));
       return;
     }
-
-    const startDate = this.getStartDateFromContent(content);
-
-    if (!startDate) {
-      new Notice(this.t("startNotFound"));
-      return;
-    }
-
-    const endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + this.settings.periodLength - 1);
-
-    content += `
-
-## ${this.t("finishCycleTitle")}
-${this.t("endDate")}: ${this.formatDate(endDate)}
-${this.t("periodDuration")}: ${this.settings.periodLength} ${this.settings.language === "en" ? "days" : "дней"}
-${this.t("status")}: ${this.t("finished")}
-`;
-
-    await this.app.vault.modify(latestFile, content);
+    const today = new Date();
+    let updated = content.replace(new RegExp(`^${this.t("status")}:.*$`, "m"), `${this.t("status")}: ${this.t("finished")}`);
+    updated = updated.replace(/(%%[\s\S]*?)(\n%%)/, `$1\n${this.t("endDate")}: ${this.formatDate(today)}$2`);
+    updated = updated.trimEnd() + `\n\n## ${this.t("finishCycleTitle")}\n\n${this.t("endDate")}: ${this.formatDate(today)}\n${this.t("status")}: ${this.t("finished")}\n`;
+    await this.app.vault.modify(file, updated);
     new Notice(this.t("finishedNotice"));
   }
 
-  async getCurrentCycleData() {
-    const latestFile = this.getLatestCycleFile();
-    if (!latestFile) return null;
-
-    const content = await this.app.vault.read(latestFile);
-    const startDate = this.getStartDateFromContent(content);
-
-    if (!startDate) return null;
-
-    const today = new Date();
-    const day = Math.floor((today - startDate) / (1000 * 60 * 60 * 24)) + 1;
-    const phase = this.getPhase(day);
-    const moon = this.getMoonPhase(today);
-    const recommendations = this.getRecommendations(phase);
-
-    return { day, phase, moon, recommendations, startDate, content };
-  }
-
   async showCurrentPhase() {
-    const data = await this.getCurrentCycleData();
-
-    if (!data) {
-      new Notice(this.t("noData"));
-      return;
-    }
-
-    const { day, phase, moon, recommendations } = data;
-
-    new Notice(
-`${this.t("cycleDay")}: ${day}
-${this.t("phase")}: ${this.getPhaseName(phase)}
-${this.t("moon")}: ${moon}
-${this.t("energy")}: ${recommendations.energy}
-${this.t("focus")}: ${recommendations.focus}`, 12000);
-  }
-
-  async createLunaDashboard() {
-    await this.ensureFolders();
-
-    const data = await this.getCurrentCycleData();
-    if (!data) {
-      new Notice(this.t("noData"));
-      return;
-    }
-
-    const { day, phase, recommendations, content } = data;
-
-    const dashboard =
-`---
-cssclasses:
-  - luna-dashboard
----
-
-# ${this.t("dashboardTitle")}
-
-## ${this.t("today")}
-
-| ${this.t("block")} | ${this.t("value")} |
-|---|---|
-| ${this.t("cycleDay")} | ${day} |
-| ${this.t("phase")} | ${this.getPhaseName(phase)} |
-| ${this.t("energy")} | ${recommendations.energy} |
-| ${this.t("mode")} | ${recommendations.mode} |
-| ${this.t("focus")} | ${recommendations.focus} |
-
-## ${this.t("quickAccess")}
-
-- [[Luna Notes/Planning/Luna Life Planner]]
-- [[Luna Notes/Calendar/Luna Cycle Calendar]]
-- [[Luna Notes/Analytics/Cycle Analytics]]
-- [[Luna Notes/Analytics/AI Pattern Tracker]]
-- [[Luna Notes/Analytics/Phase Intelligence]]
-
-## ${this.t("wellbeing")}
-
-| ${this.t("indicator")} | ${this.t("today")} |
-|---|---|
-| ${this.t("sleep")} | ${this.getFieldValue(content, "sleep") || "—"} |
-| ${this.t("pain")} | ${this.getFieldValue(content, "pain") || "—"} |
-| ${this.t("mood")} | ${this.getFieldValue(content, "mood") || "—"} |
-| ${this.t("stress")} | ${this.getFieldValue(content, "stress") || "—"} |
-| ${this.t("appetite")} | ${this.getFieldValue(content, "appetite") || "—"} |
-| ${this.t("workout")} | ${this.getFieldValue(content, "workout") || "—"} |
-
-## ${this.t("support")}
-
-${recommendations.affirmation}
-
-## ${this.t("observation")}
-
-- ${this.t("q1")}
-- ${this.t("q2")}
-- ${this.t("q3")}
-- ${this.t("q4")}
-`;
-
-    const path = "Luna Notes/Dashboard/Luna Dashboard.md";
-    const existingFile = this.app.vault.getAbstractFileByPath(path);
-
-    if (existingFile) {
-      await this.app.vault.modify(existingFile, dashboard);
-      new Notice(this.t("updatedDashboard"));
-      return;
-    }
-
-    await this.app.vault.create(path, dashboard);
-    new Notice(this.t("createdDashboard"));
-  }
-
-  async createLifePlanner() {
-    await this.ensureFolders();
-
-    const data = await this.getCurrentCycleData();
-    if (!data) {
-      new Notice(this.t("noData"));
-      return;
-    }
-
-    const { day, phase, recommendations } = data;
-
-    const planner =
-`---
-cssclasses:
-  - luna-page
----
-
-# ${this.t("lifePlannerTitle")}
-
-## ${this.t("today")}
-
-| ${this.t("block")} | ${this.t("value")} |
-|---|---|
-| ${this.t("cycleDay")} | ${day} |
-| ${this.t("phase")} | ${this.getPhaseName(phase)} |
-| ${this.t("energy")} | ${recommendations.energy} |
-| ${this.t("mode")} | ${recommendations.mode} |
-| ${this.t("focus")} | ${recommendations.focus} |
-
-## ${this.t("myDay")}
-
-### ${this.t("morning")}
-${this.t("morningItems").map(item => `- ${item}`).join("\n")}
-
-### ${this.t("day")}
-${this.t("dayItems").map(item => `- ${item}`).join("\n")}
-
-### ${this.t("evening")}
-${this.t("eveningItems").map(item => `- ${item}`).join("\n")}
-
-## ${this.t("support")}
-
-${recommendations.affirmation}
-
-## ${this.t("myThoughts")}
-
-- ${this.t("q1")}
-- ${this.t("q3")}
-
-## ${this.t("victory")}
-
--
-
-## ${this.t("gratitude")}
-
--
-`;
-
-    const path = "Luna Notes/Planning/Luna Life Planner.md";
-    const existingFile = this.app.vault.getAbstractFileByPath(path);
-
-    if (existingFile) {
-      await this.app.vault.modify(existingFile, planner);
-      new Notice(this.t("updatedPlanner"));
-      return;
-    }
-
-    await this.app.vault.create(path, planner);
-    new Notice(this.t("createdPlanner"));
-  }
-
-  async createCycleCalendar() {
-    await this.ensureFolders();
-
-    const data = await this.getCurrentCycleData();
-    if (!data) {
-      new Notice(this.t("noData"));
-      return;
-    }
-
-    const { startDate } = data;
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth();
-
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-
-    let calendar =
-`---
-cssclasses:
-  - luna-calendar
----
-
-# ${this.t("calendarTitle")}
-
-<div class="luna-calendar-card">
-
-<div class="luna-calendar-grid luna-calendar-weekdays">
-<div>${this.t("monday")}</div>
-<div>${this.t("tuesday")}</div>
-<div>${this.t("wednesday")}</div>
-<div>${this.t("thursday")}</div>
-<div>${this.t("friday")}</div>
-<div>${this.t("saturday")}</div>
-<div>${this.t("sunday")}</div>
-</div>
-
-<div class="luna-calendar-grid">
-`;
-
-    let firstWeekDay = firstDay.getDay();
-    if (firstWeekDay === 0) firstWeekDay = 7;
-
-    for (let i = 1; i < firstWeekDay; i++) {
-      calendar += `<div></div>\n`;
-    }
-
-    for (let dateNumber = 1; dateNumber <= lastDay.getDate(); dateNumber++) {
-      const currentDate = new Date(year, month, dateNumber);
-      const diff = Math.floor((currentDate - startDate) / (1000 * 60 * 60 * 24));
-      const cycleDay = ((diff % this.settings.cycleLength) + this.settings.cycleLength) % this.settings.cycleLength + 1;
-      const phase = this.getPhase(cycleDay);
-
-      const isToday =
-        currentDate.getFullYear() === today.getFullYear() &&
-        currentDate.getMonth() === today.getMonth() &&
-        currentDate.getDate() === today.getDate();
-
-      const todayClass = isToday ? " luna-today" : "";
-      calendar += `<div><span class="luna-cal-day luna-${phase}${todayClass}">${dateNumber}</span></div>\n`;
-    }
-
-    calendar += `</div>
-
-</div>
-
-## ${this.t("phases")}
-
-<div class="luna-legend-card">
-  <div class="luna-legend-row"><span class="luna-legend-dot luna-period"></span><div class="luna-legend-text"><strong>${this.t("period")}</strong><span>${this.t("periodDesc")}</span></div></div>
-  <div class="luna-legend-row"><span class="luna-legend-dot luna-follicular"></span><div class="luna-legend-text"><strong>${this.t("follicular")}</strong><span>${this.t("follicularDesc")}</span></div></div>
-  <div class="luna-legend-row"><span class="luna-legend-dot luna-ovulation"></span><div class="luna-legend-text"><strong>${this.t("ovulation")}</strong><span>${this.t("ovulationDesc")}</span></div></div>
-  <div class="luna-legend-row"><span class="luna-legend-dot luna-luteal"></span><div class="luna-legend-text"><strong>${this.t("luteal")}</strong><span>${this.t("lutealDesc")}</span></div></div>
-  <div class="luna-legend-row"><span class="luna-legend-dot luna-pms"></span><div class="luna-legend-text"><strong>${this.t("pms")}</strong><span>${this.t("pmsDesc")}</span></div></div>
-</div>
-`;
-
-    const path = "Luna Notes/Calendar/Luna Cycle Calendar.md";
-    const existingFile = this.app.vault.getAbstractFileByPath(path);
-
-    if (existingFile) {
-      await this.app.vault.modify(existingFile, calendar);
-      new Notice(this.t("updatedCalendar"));
-      return;
-    }
-
-    await this.app.vault.create(path, calendar);
-    new Notice(this.t("createdCalendar"));
-  }
-
-  async createCycleAnalytics() {
-    await this.ensureFolders();
-
-    const folder = this.app.vault.getAbstractFileByPath("Luna Notes/Cycles");
-    if (!folder || !folder.children.length) {
+    const file = this.getTargetCycleFile();
+    if (!file) {
       new Notice(this.t("noCycle"));
       return;
     }
-
-    const files = folder.children.filter(file => file.path.endsWith(".md")).sort((a, b) => a.path.localeCompare(b.path));
-    const cycles = [];
-
-    for (const file of files) {
-      const content = await this.app.vault.read(file);
-      const startDate = this.getStartDateFromContent(content);
-      const endDate = this.getEndDateFromContent(content);
-
-      if (!startDate) continue;
-      cycles.push({ startDate, endDate });
-    }
-
-    const periodLengths = cycles
-      .filter(cycle => cycle.endDate)
-      .map(cycle => Math.round((cycle.endDate - cycle.startDate) / (1000 * 60 * 60 * 24)) + 1);
-
-    const averagePeriodLength = periodLengths.length
-      ? `${(periodLengths.reduce((a, b) => a + b, 0) / periodLengths.length).toFixed(1)} ${this.settings.language === "en" ? "days" : "дней"}`
-      : this.t("notEnough");
-
-    const lastCycle = cycles.length ? this.formatDate(cycles[cycles.length - 1].startDate) : "—";
-
-    let analytics =
-`---
-cssclasses:
-  - luna-page
----
-
-# ${this.t("analyticsTitle")}
-
-## ${this.t("generalStats")}
-
-| ${this.t("parameter")} | ${this.t("value")} |
-|---|---|
-| ${this.t("totalCycles")} | ${cycles.length} |
-| ${this.t("avgCycle")} | ${this.t("notEnough")} |
-| ${this.t("avgPeriod")} | ${averagePeriodLength} |
-| ${this.t("regularity")} | ${this.t("notEnough")} |
-| ${this.t("lastCycle")} | ${lastCycle} |
-
-## ${this.t("cycleHistory")}
-
-| ${this.t("cycle")} | ${this.t("start")} | ${this.t("end")} | ${this.t("status")} |
-|---|---|---|---|
-`;
-
-    for (let i = 0; i < cycles.length; i++) {
-      const cycle = cycles[i];
-      analytics += `| ${i + 1} | ${this.formatDate(cycle.startDate)} | ${cycle.endDate ? this.formatDate(cycle.endDate) : "—"} | ${cycle.endDate ? this.t("completed") : this.t("current")} |\n`;
-    }
-
-    analytics += `
-
-## ${this.t("willShow")}
-
-${this.t("analyticsItems").map(item => `- ${item}`).join("\n")}
-
-## ${this.t("conclusion")}
-
-${this.t("analyticsConclusion")}
-`;
-
-    const path = "Luna Notes/Analytics/Cycle Analytics.md";
-    const existingFile = this.app.vault.getAbstractFileByPath(path);
-
-    if (existingFile) {
-      await this.app.vault.modify(existingFile, analytics);
-      new Notice(this.t("updatedAnalytics"));
-      return;
-    }
-
-    await this.app.vault.create(path, analytics);
-    new Notice(this.t("createdAnalytics"));
-  }
-
-  async createPatternTracker() {
-    await this.ensureFolders();
-
-    const latestFile = this.getLatestCycleFile();
-    if (!latestFile) {
+    const content = await this.app.vault.read(file);
+    const startDate = this.getStartDateFromContent(content);
+    if (!startDate) {
       new Notice(this.t("noCycle"));
       return;
     }
-
-    const content = await this.app.vault.read(latestFile);
-
-    const report =
-`---
-cssclasses:
-  - luna-page
----
-
-# ${this.t("patternTitle")}
-
-## ${this.t("latestData")}
-
-| ${this.t("parameter")} | ${this.t("value")} |
-|---|---|
-| ${this.t("sleep")} | ${this.getFieldValue(content, "sleep") || "—"} |
-| ${this.t("pain")} | ${this.getFieldValue(content, "pain") || "—"} |
-| ${this.t("energy")} | ${this.getFieldValue(content, "energy") || "—"} |
-| ${this.t("appetite")} | ${this.getFieldValue(content, "appetite") || "—"} |
-| ${this.t("workout")} | ${this.getFieldValue(content, "workout") || "—"} |
-
-## ${this.t("track")}
-
-${this.t("trackItems").map(item => `- ${item}`).join("\n")}
-
-## ${this.t("conclusion")}
-
-${this.t("trackerConclusion")}
-`;
-
-    const path = "Luna Notes/Analytics/AI Pattern Tracker.md";
-    const existingFile = this.app.vault.getAbstractFileByPath(path);
-
-    if (existingFile) {
-      await this.app.vault.modify(existingFile, report);
-      new Notice(this.t("updatedTracker"));
-      return;
-    }
-
-    await this.app.vault.create(path, report);
-    new Notice(this.t("createdTracker"));
+    const day = Math.max(1, this.daysBetween(startDate, new Date()));
+    const phase = this.getPhase(day);
+    new Notice(`${this.t("cycleDay")}: ${day}\n${this.t("phase")}: ${this.getPhaseName(phase)}\n${this.getSupportText(phase)}`, 9000);
   }
 
-  async createPhaseIntelligence() {
+  async createDashboard() {
     await this.ensureFolders();
-
-    const data = await this.getCurrentCycleData();
-    if (!data) {
-      new Notice(this.t("noData"));
-      return;
-    }
-
-    const { phase, content } = data;
-
-    const report =
-`---
-cssclasses:
-  - luna-page
----
-
-# ${this.t("phaseTitle")}
-
-## ${this.t("currentPhase")}
-
-| ${this.t("parameter")} | ${this.t("value")} |
-|---|---|
-| ${this.t("phase")} | ${this.getPhaseName(phase)} |
-| ${this.t("sleep")} | ${this.getFieldValue(content, "sleep") || "—"} |
-| ${this.t("pain")} | ${this.getFieldValue(content, "pain") || "—"} |
-| ${this.t("energy")} | ${this.getFieldValue(content, "energy") || "—"} |
-| ${this.t("appetite")} | ${this.getFieldValue(content, "appetite") || "—"} |
-| ${this.t("workout")} | ${this.getFieldValue(content, "workout") || "—"} |
-
-## ${this.t("pageShows")}
-
-${this.t("phaseItems").map(item => `- ${item}`).join("\n")}
-
-## ${this.t("conclusion")}
-
-${this.t("phaseConclusion")}
-`;
-
-    const path = "Luna Notes/Analytics/Phase Intelligence.md";
-    const existingFile = this.app.vault.getAbstractFileByPath(path);
-
-    if (existingFile) {
-      await this.app.vault.modify(existingFile, report);
-      new Notice(this.t("updatedPhase"));
-      return;
-    }
-
-    await this.app.vault.create(path, report);
-    new Notice(this.t("createdPhase"));
+    const cycles = await this.getCycleHistory();
+    const latest = cycles[cycles.length - 1];
+    const text = latest
+      ? `Последний цикл: ${this.formatDate(latest.startDate)}${latest.endDate ? ` - ${this.formatDate(latest.endDate)}` : ""}`
+      : "Пока нет циклов";
+    const content = `---\ncssclasses:\n  - luna-dashboard\n---\n\n# ${this.t("dashboardTitle")}\n\n<div class="luna-hero-card"><div><p class="luna-kicker">${this.t("today")}</p><h2>Luna Notes</h2><p>${text}</p></div><div class="luna-hero-orbit"><span>${cycles.length}</span><small>циклов</small></div></div>\n\n[[Luna Notes/Calendar/Luna Cycle Calendar]]\n`;
+    await this.upsertFile("Luna Notes/Dashboard/Luna Dashboard.md", content);
+    new Notice(this.t("saved"));
   }
 
-  async saveSettings() {
-    await this.saveData(this.settings);
+  async createCalendar() {
+    await this.ensureFolders();
+    const cycles = await this.getCycleHistory();
+    const rows = cycles
+      .map(cycle => `- ${this.formatDate(cycle.startDate)}${cycle.endDate ? ` - ${this.formatDate(cycle.endDate)}` : ""}${cycle.ovulation ? `, овуляция: ${cycle.ovulation}` : ""}`)
+      .join("\n") || "- Пока нет циклов";
+    const content = `---\ncssclasses:\n  - luna-calendar\n---\n\n# ${this.t("calendarTitle")}\n\n${rows}\n`;
+    await this.upsertFile("Luna Notes/Calendar/Luna Cycle Calendar.md", content);
+    new Notice(this.t("saved"));
+  }
+
+  async upsertFile(path, content) {
+    const file = this.app.vault.getAbstractFileByPath(path);
+    if (file) await this.app.vault.modify(file, content);
+    else await this.app.vault.create(path, content);
   }
 };
+
+class AddPastCycleModal extends Modal {
+  constructor(app, plugin) {
+    super(app);
+    this.plugin = plugin;
+    this.startValue = "";
+    this.endValue = "";
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("luna-modal");
+    contentEl.createEl("h2", { text: this.plugin.t("addPastCycle") });
+    contentEl.createEl("p", { text: "Можно писать 2026-03-07 или 07.03.2026." });
+
+    new Setting(contentEl)
+      .setName(this.plugin.t("startDate"))
+      .addText(text => text.setPlaceholder("07.03.2026").onChange(value => { this.startValue = value; }));
+    new Setting(contentEl)
+      .setName(this.plugin.t("endDate"))
+      .addText(text => text.setPlaceholder("10.03.2026").onChange(value => { this.endValue = value; }));
+    new Setting(contentEl)
+      .addButton(button => button.setButtonText(this.plugin.t("saved")).setCta().onClick(async () => {
+        await this.plugin.savePastCycle(this.startValue, this.endValue);
+        this.close();
+      }));
+  }
+
+  onClose() {
+    this.contentEl.empty();
+  }
+}
 
 class LunaNotesSettingTab extends PluginSettingTab {
   constructor(app, plugin) {
@@ -1073,58 +690,45 @@ class LunaNotesSettingTab extends PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-
     containerEl.createEl("h2", { text: this.plugin.t("settingsTitle") });
 
     new Setting(containerEl)
       .setName(this.plugin.t("languageSetting"))
-      .setDesc(this.plugin.t("languageDesc"))
-      .addDropdown(dropdown =>
-        dropdown
-          .addOption("ru", "Русский")
-          .addOption("en", "English")
-          .setValue(this.plugin.settings.language)
-          .onChange(async value => {
-            this.plugin.settings.language = value;
-            await this.plugin.saveSettings();
-            new Notice("Language saved. Restart Luna Notes.");
-          })
-      );
+      .addDropdown(dropdown => dropdown
+        .addOptions({ ru: "Русский", en: "English" })
+        .setValue(this.plugin.settings.language)
+        .onChange(async value => {
+          this.plugin.settings.language = value;
+          await this.plugin.saveSettings();
+          this.display();
+        }));
 
     new Setting(containerEl)
       .setName(this.plugin.t("cycleLengthSetting"))
-      .addText(text =>
-        text.setValue(String(this.plugin.settings.cycleLength)).onChange(async value => {
-          this.plugin.settings.cycleLength = Number(value);
-          await this.plugin.saveSettings();
-        })
-      );
+      .addText(text => text.setValue(String(this.plugin.settings.cycleLength)).onChange(async value => {
+        this.plugin.settings.cycleLength = Number(value) || DEFAULT_SETTINGS.cycleLength;
+        await this.plugin.saveSettings();
+      }));
 
     new Setting(containerEl)
       .setName(this.plugin.t("periodLengthSetting"))
-      .addText(text =>
-        text.setValue(String(this.plugin.settings.periodLength)).onChange(async value => {
-          this.plugin.settings.periodLength = Number(value);
-          await this.plugin.saveSettings();
-        })
-      );
+      .addText(text => text.setValue(String(this.plugin.settings.periodLength)).onChange(async value => {
+        this.plugin.settings.periodLength = Number(value) || DEFAULT_SETTINGS.periodLength;
+        await this.plugin.saveSettings();
+      }));
 
     new Setting(containerEl)
       .setName(this.plugin.t("ovulationDaySetting"))
-      .addText(text =>
-        text.setValue(String(this.plugin.settings.ovulationDay)).onChange(async value => {
-          this.plugin.settings.ovulationDay = Number(value);
-          await this.plugin.saveSettings();
-        })
-      );
+      .addText(text => text.setValue(String(this.plugin.settings.ovulationDay)).onChange(async value => {
+        this.plugin.settings.ovulationDay = Number(value) || DEFAULT_SETTINGS.ovulationDay;
+        await this.plugin.saveSettings();
+      }));
 
     new Setting(containerEl)
       .setName(this.plugin.t("pmsLengthSetting"))
-      .addText(text =>
-        text.setValue(String(this.plugin.settings.pmsLength)).onChange(async value => {
-          this.plugin.settings.pmsLength = Number(value);
-          await this.plugin.saveSettings();
-        })
-      );
+      .addText(text => text.setValue(String(this.plugin.settings.pmsLength)).onChange(async value => {
+        this.plugin.settings.pmsLength = Number(value) || DEFAULT_SETTINGS.pmsLength;
+        await this.plugin.saveSettings();
+      }));
   }
 }
